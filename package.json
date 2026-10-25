@@ -1,0 +1,6 @@
+{
+  "name": "aricup-2026",
+  "private": true,
+  "description": "2026 과천아리컵 여성부 대회 안내 · 실시간 결과 웹앱",
+  "engines": { "node": ">=18" }
+}
