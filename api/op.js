@@ -38,6 +38,27 @@ function commandsFor(op) {
       }
       return Object.keys(map).length ? [['HSET', P + 'slots', op.div, JSON.stringify(map)]] : [['HDEL', P + 'slots', op.div]];
     }
+    case 'reset': {
+      // 경기 결과를 모두 '예정'으로 (scope: all | ari | tori). extra=true면 추첨 순서·본선 배정도 초기화
+      const scope = op.scope;
+      if (scope !== 'all' && scope !== 'ari' && scope !== 'tori') throw err(400, '초기화 범위가 올바르지 않아요.');
+      const cmds = [];
+      if (scope === 'all') {
+        cmds.push(['DEL', P + 'results']);
+        if (op.extra) cmds.push(['DEL', P + 'draws'], ['DEL', P + 'slots']);
+      } else {
+        const ids = Array.isArray(op.ids) ? op.ids : [];
+        if (ids.length > 200 || !ids.every((id) => /^\d{4}-[1-6]$/.test(String(id)))) throw err(400, '경기 번호가 올바르지 않아요.');
+        if (ids.length) cmds.push(['HDEL', P + 'results'].concat(ids));
+        if (op.extra) {
+          const dks = scope === 'ari'
+            ? ['pre:ari:A', 'pre:ari:B', 'pre:ari:C', 'pre:ari:D', 'main:ari:1', 'main:ari:2', 'main:ari:3', 'main:ari:4', 'main:ari:5']
+            : ['pre:tori:A', 'pre:tori:B'];
+          cmds.push(['HDEL', P + 'draws'].concat(dks), ['HDEL', P + 'slots', scope]);
+        }
+      }
+      return cmds;
+    }
     default: throw err(400, '알 수 없는 요청이에요.');
   }
 }
