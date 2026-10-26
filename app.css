@@ -292,3 +292,15 @@ a.adm-btn{text-decoration:none;display:inline-flex;align-items:center}
 .login{max-width:420px;margin:24px auto 0}
 .login input{display:block;width:100%;padding:12px 14px;margin-top:6px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:20px;letter-spacing:.2em;background:var(--surface);color:var(--ink)}
 .login input:focus{outline:2px solid var(--acc);outline-offset:1px}
+/* admin: team search · reset */
+input.search{display:block;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;background:var(--surface);color:var(--ink)}
+input.search:focus{outline:2px solid var(--acc);outline-offset:1px}
+.tcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-top:10px}
+.tc-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.tc-h b{font-size:16px;margin-right:2px}
+.tc-s{color:var(--ink-2);margin:6px 0 10px}
+.m-cards{font-size:11px;font-weight:600;color:var(--gold);margin-top:2px}
+.chipbtn.danger{border-color:var(--live);color:var(--live)}
+.sh-actions .dangerbtn{background:var(--live);border-color:var(--live);color:#FFFFFF}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-top:12px;cursor:pointer}
+.chk input{margin-top:3px;width:18px;height:18px;flex:none}

@@ -70,34 +70,37 @@ function fieldKind(f){return f<=4?'축구장':'풋살장';}
 function stageTag(m){var d=DIV[m.div].name;if(m.stage==='pre')return d+' '+m.g+'조 예선';if(m.stage==='main')return d+' '+m.g+'위조 본선';return d+' '+m.g+'위 결정전';}
 
 /* ---------- 순위 계산 ---------- */
-function sameAll(a,b){return a.p&&b.p&&a.h2h===b.h2h&&a.fp===b.fp&&(a.gf-a.ga)===(b.gf-b.ga)&&a.gf===b.gf;}
-function table(keys,ms,dk){
+/* 순위 규칙: 승점 → 승자승 → 페어플레이 → 골득실 → 추첨 (다득점은 쓰지 않음)
+   - 승점이 같은 팀끼리 승자승(그 팀들 사이 경기의 승점)을 비교
+   - 기준 하나로 일부만 갈리면, 남은 동률 팀끼리 다시 승자승부터 비교
+   - 골득실까지 같으면 '추첨 대기'(운영진이 추첨 순서를 지정하면 그 순서) */
+function rankTeams(keys,games,ord){
   var S={};keys.forEach(function(k){S[k]={k:k,p:0,w:0,d:0,l:0,gf:0,ga:0,fp:0,pts:0};});
-  ms.forEach(function(m){var r=res(m);if(!r||!S[m.h]||!S[m.a])return;var H=S[m.h],A=S[m.a];
+  games.forEach(function(g){var r=g.r,H=S[g.h],A=S[g.a];if(!r||!H||!A)return;
     H.p++;A.p++;H.gf+=r.h;H.ga+=r.a;A.gf+=r.a;A.ga+=r.h;
     H.fp+=10-5*(r.hy||0)-10*(r.hr||0);A.fp+=10-5*(r.ay||0)-10*(r.ar||0);
     if(r.h>r.a){H.w++;A.l++;H.pts+=3;}else if(r.h<r.a){A.w++;H.l++;A.pts+=3;}else{H.d++;A.d++;H.pts++;A.pts++;}});
-  var rows=keys.map(function(k){return S[k];});
-  rows.sort(function(x,y){return y.pts-x.pts;});
-  var out=[],i=0;
-  while(i<rows.length){var j=i;while(j<rows.length&&rows[j].pts===rows[i].pts)j++;
-    var grp=rows.slice(i,j);
-    if(grp.length>1){var set={};grp.forEach(function(r){set[r.k]=1;r.h2h=0;});
-      ms.forEach(function(m){var r=res(m);if(!r||!set[m.h]||!set[m.a])return;
-        if(r.h>r.a)S[m.h].h2h+=3;else if(r.h<r.a)S[m.a].h2h+=3;else{S[m.h].h2h++;S[m.a].h2h++;}});
-      grp.sort(function(x,y){return y.h2h-x.h2h||y.fp-x.fp||(y.gf-y.ga)-(x.gf-x.ga)||y.gf-x.gf;});
-      var runs=[],cur=[grp[0]];
-      for(var q=1;q<grp.length;q++){if(sameAll(grp[q-1],grp[q]))cur.push(grp[q]);else{runs.push(cur);cur=[grp[q]];}}
-      runs.push(cur);
-      var ord=dk&&STATE.draws&&STATE.draws[dk];grp=[];
-      runs.forEach(function(run,ri){
-        if(run.length>1){var id=i+'-'+ri;run.forEach(function(r){r.run=id;});
-          if(ord&&run.every(function(r){return ord.indexOf(r.k)>=0;})){run.sort(function(x,y){return ord.indexOf(x.k)-ord.indexOf(y.k);});run.forEach(function(r){r.drawn=true;});}
-          else run.forEach(function(r){r.tie=true;});}
-        grp=grp.concat(run);});
-    }
-    out=out.concat(grp);i=j;}
-  return out;
+  function split(set,val){var vs=[],by={};set.forEach(function(k){var v=val(k);if(!(v in by)){by[v]=[];vs.push(v);}by[v].push(k);});
+    vs.sort(function(x,y){return y-x;});return vs.map(function(v){return by[v];});}
+  function h2h(set){var inS={},pt={};set.forEach(function(k){inS[k]=1;pt[k]=0;});
+    games.forEach(function(g){var r=g.r;if(!r||!inS[g.h]||!inS[g.a])return;
+      if(r.h>r.a)pt[g.h]+=3;else if(r.h<r.a)pt[g.a]+=3;else{pt[g.h]++;pt[g.a]++;}});return pt;}
+  function resolve(set){if(set.length<2)return [set];
+    var hp=h2h(set),crit=[function(k){return hp[k];},function(k){return S[k].fp;},function(k){return S[k].gf-S[k].ga;}];
+    for(var c=0;c<crit.length;c++){var parts=split(set,crit[c]);
+      if(parts.length>1){var out=[];parts.forEach(function(p){out=out.concat(resolve(p));});return out;}}
+    return [set];}
+  var rows=[],bi=0;
+  split(keys,function(k){return S[k].pts;}).forEach(function(pset){
+    resolve(pset).forEach(function(block){var rs=block.map(function(k){return S[k];});
+      if(rs.length>1&&rs.every(function(r){return r.p>0;})){var id='b'+(bi++);rs.forEach(function(r){r.run=id;});
+        if(ord&&rs.every(function(r){return ord.indexOf(r.k)>=0;})){rs.sort(function(x,y){return ord.indexOf(x.k)-ord.indexOf(y.k);});rs.forEach(function(r){r.drawn=true;});}
+        else rs.forEach(function(r){r.tie=true;});}
+      rows=rows.concat(rs);});});
+  return rows;
+}
+function table(keys,ms,dk){
+  return rankTeams(keys,ms.map(function(m){return{h:m.h,a:m.a,r:res(m)};}),dk&&STATE.draws&&STATE.draws[dk]);
 }
 function groupMs(div,g){return M.filter(function(m){return m.div===div&&m.stage==='pre'&&m.g===g;});}
 function groupTable(div,g){var k='gt'+div+g;if(!C[k]){C[k]=table(DIV[div].groups[g].map(function(_,i){return g+(i+1);}),groupMs(div,g),'pre:'+div+':'+g);}return C[k];}
@@ -127,6 +130,7 @@ function matchCard(m,opt){opt=opt||{};
   var stTxt=st==='done'?'종료':st==='live'?'<span class="livedot"></span>경기 중':'예정';
   function row(s,score,win){return '<div class="m-row'+(win?' win':'')+'"><span class="m-team'+(s.ok?'':' ph')+'">'+esc(s.name)+(isMine(m.div,s.key)?'<span class="me">★</span>':'')+'</span><span class="m-score">'+(sc?score:'')+'</span></div>';}
   var draw=r&&r.h===r.a&&m.stage==='rank'&&r.w?'<div class="m-tag">무승부 · 운영본부 판정</div>':'';
+  if(ui.admin&&sc&&(sc.hy||sc.hr||sc.ay||sc.ar))draw+='<div class="m-cards">경고 '+(sc.hy||0)+'·'+(sc.ay||0)+' · 퇴장 '+(sc.hr||0)+'·'+(sc.ar||0)+'</div>';
   return '<'+(click?'button type="button"':'div')+' class="match s-'+st+(mine?' mine':'')+(click?' click':'')+'" data-mid="'+m.id+'">'+
     '<div class="m-meta"><span class="m-time">'+(opt.noTime?fieldName(m.f).replace('구장',''):m.t)+'</span><span class="m-field">'+(opt.noTime?'구장':fieldName(m.f))+'</span></div>'+
     '<div class="m-body"><div class="m-tag">'+esc(opt.tag||stageTag(m))+(opt.noTime?'':' · '+fieldKind(m.f))+'</div>'+row(h,sc&&sc.h,hw)+row(a,sc&&sc.a,aw)+draw+'</div>'+
@@ -312,6 +316,7 @@ function adminBody(){
   var live=M.filter(liveRec),done=M.filter(function(m){return res(m);}).length,nxtT=null;
   M.forEach(function(m){if(mstate(m)==='sched'&&(!nxtT||m.t<nxtT))nxtT=m.t;});
   var h='<div class="quick"><div><b>'+live.length+'</b><span>경기 중</span></div><div><b>'+done+'/'+M.length+'</b><span>종료</span></div><div><b>'+(nxtT||'–')+'</b><span>다음 시작</span></div></div>';
+  h+='<section><h2>팀 검색 <span class="sub">팀 경기를 모아 보고 바로 수정</span></h2><input id="tq" class="search" type="search" enterkeyhint="search" placeholder="팀명 입력 (예: 볼터치, fc)" autocomplete="off" value="'+esc(ui.q||'')+'"><div id="tqres">'+teamSearchHTML()+'</div></section>';
   var dv=ui.adiv||'all',av=ui.aview||'now',ms=M.filter(function(m){return dv==='all'||m.div===dv;});
   h+='<section><h2>경기 상태 · 결과 입력 <span class="sub">경기를 누르면 입력 창이 열려요</span></h2>'+seg('adiv',[['all','전체'],['ari','아리부'],['tori','토리부']],dv)+seg('aview',[['now','지금 할 경기'],['all','전체 일정']],av);
   if(av==='now'){
@@ -330,6 +335,8 @@ function adminBody(){
     return '<button type="button" class="arow" data-draw="'+dk+'"><span>'+esc(drawTitle(dk))+'</span><span class="pill'+(pend?' live':'')+'">'+(pend?'추첨 대기':'지정됨')+'</span></button>';}).join('')+'</div>':'<p class="card small muted" style="margin:0">승점·승자승·페어플레이·골득실까지 모두 같은 팀이 생기면 여기에 나타나요.</p>')+'</section>';
   function cnt(d){return Object.keys(STATE.slots||{}).filter(function(k){return k.indexOf(d+':')===0;}).length;}
   h+='<section><h2>본선 팀 배정 <span class="sub">실격·부정선수 등</span></h2><div class="alist">'+['ari','tori'].map(function(d){return '<button type="button" class="arow" data-slots="'+d+'"><span>'+DIV[d].name+' '+(d==='ari'?'본선 1–5위조':'순위 결정전')+'</span><span class="pill">'+(cnt(d)?'조정 '+cnt(d)+'자리':'자동 배정')+'</span></button>';}).join('')+'</div></section>';
+  var anyRec=Object.keys(STATE.results).length;
+  h+='<section><h2>결과 일괄 초기화 <span class="sub">모두 예정으로 되돌리기</span></h2><div class="card"><p class="small muted" style="margin:0 0 10px">테스트 기록을 지우거나 처음부터 다시 입력할 때 써요. 고른 범위의 경기가 모두 "예정"으로 돌아가고 순위가 0부터 다시 계산돼요. 지금 입력된 경기 '+anyRec+'개.</p><button type="button" class="chipbtn danger" data-reset="1">일괄 초기화…</button></div></section>';
   h+='<p class="small muted">저장하면 참가자 화면에 몇 초 안에 반영돼요. 운영진 여러 명이 동시에 다른 경기를 입력해도 서로 덮어쓰지 않아요.</p>';
   h+='<div class="linkrow"><a href="/" target="_blank" rel="noopener">참가자 화면 새 창으로 보기</a><button type="button" data-act="logout">로그아웃</button></div>';
   return h;}
@@ -391,6 +398,34 @@ function drawSlotSheet(){C={};var d=slotDraft,div=d.div,gs=Object.keys(DIV[div].
   if(dk.length)h+='<div class="sh-note" style="color:var(--live)">같은 팀이 두 자리에 들어가 있어요: '+dk.map(function(k){return esc(nameOf(div,k));}).join(', ')+'. 한 자리를 바꿔야 저장할 수 있어요.</div>';
   h+='<div class="sh-actions"><button type="button" data-act="close">닫기</button><button type="button" class="pri" data-act="saveslots"'+(dk.length?' disabled':'')+'>배정 저장</button></div></div></div>';
   document.getElementById('sheet').innerHTML=h;}
+/* ---------- 관리자: 팀 검색 ---------- */
+function norm(s){return String(s||'').toLowerCase().replace(/[\s_\-]+/g,'');}
+function teamSearchHTML(){var q=norm(ui.q);
+  if(!q)return '<p class="small muted" style="margin:8px 2px 0">팀명 일부만 입력해도 찾아요. 경기를 누르면 스코어·경고·퇴장을 고칠 수 있어요.</p>';
+  var hits=[];['ari','tori'].forEach(function(d){Object.keys(DIV[d].groups).forEach(function(g){DIV[d].groups[g].forEach(function(t,i){if(norm(t).indexOf(q)>=0)hits.push({d:d,k:g+(i+1),n:t});});});});
+  if(!hits.length)return '<p class="small muted" style="margin:8px 2px 0">"'+esc(ui.q)+'"와 일치하는 팀이 없어요.</p>';
+  var more=hits.length-4;hits=hits.slice(0,4);
+  return hits.map(function(x){var g=x.k[0],tb=groupTable(x.d,g),rk=0;tb.forEach(function(r,i){if(r.k===x.k)rk=i+1;});var me=tb[rk-1];
+    var ms=M.filter(function(m){return m.div===x.d&&(m.stage==='pre'?(m.h===x.k||m.a===x.k):(side(m,'h').key===x.k||side(m,'a').key===x.k));});
+    var sl=groupDone(x.d,g)?teamSlot(x.d,x.k):null,gd=me.gf-me.ga;
+    return '<div class="tcard"><div class="tc-h"><b>'+esc(x.n)+'</b><span class="pill '+x.d+'">'+DIV[x.d].name+' '+g+'조</span>'+(sl?'<span class="pill gold">'+(x.d==='ari'?'본선 '+sl.slice(1)+'위조':sl.slice(1)+'위 결정전')+'</span>':'')+'</div>'+
+      '<div class="tc-s small">예선 '+rk+'위'+(me.tie?' (추첨 대기)':'')+' · 승점 '+me.pts+' · '+me.w+'승 '+me.d+'무 '+me.l+'패 · 득실 '+(gd>0?'+':'')+gd+' · FP '+(me.p?me.fp:0)+'</div>'+
+      '<div class="mlist">'+ms.map(function(m){return matchCard(m);}).join('')+'</div></div>';}).join('')+
+    (more>0?'<p class="small muted">일치하는 팀이 '+more+'개 더 있어요. 이름을 더 입력해 주세요.</p>':'');}
+
+/* ---------- 관리자: 일괄 초기화 ---------- */
+var resetDraft=null;
+function resetIds(scope){return Object.keys(STATE.results).filter(function(id){var m=BYID[id];return scope==='all'||(m&&m.div===scope);});}
+function openReset(){resetDraft={scope:'all',extra:false,txt:''};drawResetSheet();}
+function drawResetSheet(){var d=resetDraft,n=resetIds(d.scope).length,ok=d.txt.trim()==='초기화';
+  var h='<div class="sheet-bg" id="sheetbg"><div class="sheet" role="dialog" aria-modal="true" aria-label="결과 일괄 초기화"><h3>결과 일괄 초기화</h3><div class="small muted">고른 범위의 경기가 모두 "예정"으로 돌아가요. 되돌릴 수 없어요.</div>'+
+    '<div class="seg" role="group" aria-label="범위">'+[['all','전체'],['ari','아리부'],['tori','토리부']].map(function(o){return '<button type="button" data-rscope="'+o[0]+'" aria-pressed="'+(d.scope===o[0])+'">'+o[1]+'</button>';}).join('')+'</div>'+
+    '<div class="sh-note">입력된 경기 <b>'+n+'개</b>(경기 중 포함)가 예정으로 바뀌어요.</div>'+
+    '<label class="chk"><input type="checkbox" id="rextra"'+(d.extra?' checked':'')+'> 동률 추첨 순서와 본선 팀 배정(조정)도 함께 초기화</label>'+
+    '<label class="small" for="rconfirm" style="display:block;margin-top:12px;font-weight:600">확인을 위해 <b>초기화</b>라고 입력하세요</label><input id="rconfirm" class="search" autocomplete="off" value="'+esc(d.txt)+'">'+
+    '<div class="sh-actions"><button type="button" data-act="close">취소</button><button type="button" class="pri dangerbtn" data-act="doreset"'+(ok?'':' disabled')+'>'+(d.scope==='all'?'전체':DIV[d.scope].name)+' 초기화</button></div></div></div>';
+  document.getElementById('sheet').innerHTML=h;}
+
 var drawDraft=null;
 function tableFor(dk){var p=dk.split(':');return p[0]==='pre'?groupTable(p[1],p[2]):mainTable(p[2]);}
 function drawTitle(dk){var p=dk.split(':');return DIV[p[1]].name+' '+(p[0]==='pre'?p[2]+'조 예선':p[2]+'위조 본선');}
@@ -416,7 +451,7 @@ function api(path,opt){return fetch(path,opt).then(function(r){return r.json().c
 function applyServer(j){if(!j||!j.state)return;VER=j.ver;var s=j.state;STATE={results:s.results||{},notice:s.notice||'',draws:s.draws||{},slots:s.slots||{}};LOADED=true;}
 function uiBusy(){var ae=document.activeElement,tag=ae&&ae.tagName;return tag==='TEXTAREA'||tag==='SELECT'||tag==='INPUT'||!!document.getElementById('sheetbg')||!!document.getElementById('busy');}
 function refresh(){if(uiBusy()){PENDING=true;return;}PENDING=false;var y=window.scrollY;render();window.scrollTo(0,y);}
-function closeSheet(){draft=null;drawDraft=null;slotDraft=null;var s=document.getElementById('sheet');if(s)s.innerHTML='';if(PENDING)setTimeout(refresh,0);}
+function closeSheet(){draft=null;drawDraft=null;slotDraft=null;resetDraft=null;var s=document.getElementById('sheet');if(s)s.innerHTML='';if(PENDING)setTimeout(refresh,0);}
 function save(op,okMsg){
   if(!EDITOR||!PW){toast('관리자 로그인이 필요해요.');return;}
   busy(true);
@@ -439,6 +474,8 @@ document.addEventListener('click',function(e){var t=e.target.closest('button,[da
   if(t.dataset.field!=null){ui.field=+t.dataset.field;render();return;}
   if(t.dataset.copy){var v=t.dataset.copy;var p=navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject();p.then(function(){toast('복사했어요: '+v);},function(){toast(v);});return;}
   if(t.dataset.slots){openSlots(t.dataset.slots);return;}
+  if(t.dataset.reset){openReset();return;}
+  if(t.dataset.rscope&&resetDraft){resetDraft.scope=t.dataset.rscope;drawResetSheet();return;}
   if(t.dataset.draw){openDraw(t.dataset.draw);return;}
   if(t.dataset.mv){var q=t.dataset.mv.split(':'),run=drawDraft.runs[+q[0]],i1=+q[1],j1=i1+(+q[2]);var tmp=run.keys[i1];run.keys[i1]=run.keys[j1];run.keys[j1]=tmp;drawDrawSheet();return;}
   if(t.dataset.dst){draft.st=t.dataset.dst;drawSheet();return;}
@@ -446,6 +483,8 @@ document.addEventListener('click',function(e){var t=e.target.closest('button,[da
   if(t.dataset.act){var a=t.dataset.act;
     if(a==='close'){closeSheet();return;}
     if(a==='logout'){logout('');return;}
+    if(a==='doreset'&&resetDraft){if(resetDraft.txt.trim()!=='초기화')return;var sc=resetDraft.scope;
+      save({type:'reset',scope:sc,ids:sc==='all'?[]:resetIds(sc),extra:!!resetDraft.extra},(sc==='all'?'전체':DIV[sc].name)+' 경기를 모두 예정으로 되돌렸어요');return;}
     if(a==='saveslots'&&slotDraft){var mp={};Object.keys(slotDraft.map).forEach(function(k){if(k.indexOf(slotDraft.div+':')===0)mp[k]=slotDraft.map[k];});
       save({type:'slots',div:slotDraft.div,map:mp},DIV[slotDraft.div].name+' 본선 팀 배정을 저장했어요');return;}
     if(a==='savedraw'&&drawDraft){var all=[];drawDraft.runs.forEach(function(r){all=all.concat(r.keys);});
@@ -462,7 +501,11 @@ document.addEventListener('click',function(e){var t=e.target.closest('button,[da
       save({type:'result',id:draft.id,rec:rec},where+'최종 결과를 저장했어요');return;}}
   if(t.dataset.mid&&ui.admin){openSheet(t.dataset.mid);}
 });
+document.addEventListener('input',function(e){var id=e.target.id;
+  if(id==='tq'){ui.q=e.target.value;C={};var box=document.getElementById('tqres');if(box)box.innerHTML=teamSearchHTML();return;}
+  if(id==='rconfirm'&&resetDraft){resetDraft.txt=e.target.value;var b=document.querySelector('[data-act="doreset"]');if(b)b.disabled=resetDraft.txt.trim()!=='초기화';}});
 document.addEventListener('change',function(e){if(e.target.id==='mysel'){MY=e.target.value||null;ls('aricup-my',MY);render();return;}
+  if(e.target.id==='rextra'&&resetDraft){resetDraft.extra=e.target.checked;return;}
   var sk=e.target.dataset&&e.target.dataset.slot;
   if(sk&&slotDraft){var v=e.target.value;if(v)slotDraft.map[sk]=v;else delete slotDraft.map[sk];
     var sh=document.querySelector('.sheet'),y=sh?sh.scrollTop:0;drawSlotSheet();var sh2=document.querySelector('.sheet');if(sh2)sh2.scrollTop=y;}});
