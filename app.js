@@ -102,6 +102,8 @@ function rankTeams(keys,games,ord){
 function table(keys,ms,dk){
   return rankTeams(keys,ms.map(function(m){return{h:m.h,a:m.a,r:res(m)};}),dk&&STATE.draws&&STATE.draws[dk]);
 }
+/* 추첨 대기(동률) 팀은 같은 순위로 표시: 4·4·6 */
+function dispRank(rows,i){var r=rows[i];if(r&&r.tie){for(var j=0;j<i;j++){if(rows[j].run===r.run)return j+1;}}return i+1;}
 function groupMs(div,g){return M.filter(function(m){return m.div===div&&m.stage==='pre'&&m.g===g;});}
 function groupTable(div,g){var k='gt'+div+g;if(!C[k]){C[k]=table(DIV[div].groups[g].map(function(_,i){return g+(i+1);}),groupMs(div,g),'pre:'+div+':'+g);}return C[k];}
 function groupDone(div,g){return groupMs(div,g).every(function(m){return res(m);});}
@@ -140,8 +142,8 @@ function standings(rows,div,opt){opt=opt||{};
   var anyTie=false;
   rows.forEach(function(r,i){var s=opt.slot?(function(){var t=slotTeam(div,r.k);return t?{n:nameOf(div,t),key:t,adj:!!slotOv(div,r.k)}:{n:slotPh(div,r.k),ph:1};})():{n:nameOf(div,r.k),key:r.k};
     if(r.tie)anyTie=true;
-    var medal='';if(opt.medals&&opt.complete){if(i===0)medal='<span class="medal g">우승</span>';if(i===1)medal='<span class="medal s">준우승</span>';}
-    h+='<tr'+(isMine(div,s.key)?' class="mine"':'')+'><td class="rk">'+(i+1)+(r.tie?'<span class="tie">*</span>':'')+(r.drawn?'<span class="drawn">추첨</span>':'')+'</td><td class="l'+(s.ph?' ph':'')+'">'+esc(s.n)+(s.adj?'<span class="drawn">조정</span>':'')+medal+'</td><td>'+r.p+'</td><td>'+r.w+'</td><td>'+r.d+'</td><td>'+r.l+'</td><td>'+r.gf+'</td><td>'+r.ga+'</td><td>'+(r.gf-r.ga>0?'+':'')+(r.gf-r.ga)+'</td><td>'+(r.p?r.fp:0)+'</td><td class="pts">'+r.pts+'</td></tr>';});
+    var medal='';if(opt.medals&&opt.complete&&!r.tie){if(i===0)medal='<span class="medal g">우승</span>';if(i===1)medal='<span class="medal s">준우승</span>';}
+    h+='<tr'+(isMine(div,s.key)?' class="mine"':'')+'><td class="rk">'+dispRank(rows,i)+(r.tie?'<span class="tie">*</span>':'')+(r.drawn?'<span class="drawn">추첨</span>':'')+'</td><td class="l'+(s.ph?' ph':'')+'">'+esc(s.n)+(s.adj?'<span class="drawn">조정</span>':'')+medal+'</td><td>'+r.p+'</td><td>'+r.w+'</td><td>'+r.d+'</td><td>'+r.l+'</td><td>'+r.gf+'</td><td>'+r.ga+'</td><td>'+(r.gf-r.ga>0?'+':'')+(r.gf-r.ga)+'</td><td>'+(r.p?r.fp:0)+'</td><td class="pts">'+r.pts+'</td></tr>';});
   h+='</tbody></table></div><div class="legend">순위: 승점 → 승자승 → 페어플레이(FP) → 골득실 → 추첨'+(anyTie?' · <span class="tie">* 모든 기준 동률, 추첨 대기</span>':'')+
     (opt.dk&&ui.admin&&rows.some(function(r){return r.run!=null;})?'<br><button type="button" class="chipbtn drawbtn" data-draw="'+opt.dk+'">동률 팀 추첨 순위 지정</button>':'')+'</div>';
   return h;}
@@ -177,7 +179,7 @@ function myHTML(){
   var tb=groupTable(div,g),rk=0;tb.forEach(function(r,i){if(r.k===key)rk=i+1;});var me=tb[rk-1];
   var ms=M.filter(function(m){return m.div===div&&(m.stage==='pre'?(m.h===key||m.a===key):(side(m,'h').key===key||side(m,'a').key===key));});
   var done=groupDone(div,g);
-  h+='<div class="mysum"><span class="pill '+div+'">'+DIV[div].name+' '+g+'조</span><span class="pill">예선 '+(done?'최종 ':'현재 ')+rk+'위 · 승점 '+me.pts+'</span>';
+  h+='<div class="mysum"><span class="pill '+div+'">'+DIV[div].name+' '+g+'조</span><span class="pill">예선 '+(done?'최종 ':'현재 ')+dispRank(tb,rk-1)+'위 · 승점 '+me.pts+'</span>';
   if(done){var sl=teamSlot(div,key);h+='<span class="pill gold">'+(sl?(div==='ari'?'본선 '+sl.slice(1)+'위조 진출':sl.slice(1)+'위 결정전 진출'):'본선 배정 확인 중 · 운영본부 문의')+'</span>';}
   h+='</div>';
   var next=ms.filter(function(m){return !res(m);})[0];
@@ -409,7 +411,7 @@ function teamSearchHTML(){var q=norm(ui.q);
     var ms=M.filter(function(m){return m.div===x.d&&(m.stage==='pre'?(m.h===x.k||m.a===x.k):(side(m,'h').key===x.k||side(m,'a').key===x.k));});
     var sl=groupDone(x.d,g)?teamSlot(x.d,x.k):null,gd=me.gf-me.ga;
     return '<div class="tcard"><div class="tc-h"><b>'+esc(x.n)+'</b><span class="pill '+x.d+'">'+DIV[x.d].name+' '+g+'조</span>'+(sl?'<span class="pill gold">'+(x.d==='ari'?'본선 '+sl.slice(1)+'위조':sl.slice(1)+'위 결정전')+'</span>':'')+'</div>'+
-      '<div class="tc-s small">예선 '+rk+'위'+(me.tie?' (추첨 대기)':'')+' · 승점 '+me.pts+' · '+me.w+'승 '+me.d+'무 '+me.l+'패 · 득실 '+(gd>0?'+':'')+gd+' · FP '+(me.p?me.fp:0)+'</div>'+
+      '<div class="tc-s small">예선 '+dispRank(tb,rk-1)+'위'+(me.tie?' (추첨 대기)':'')+' · 승점 '+me.pts+' · '+me.w+'승 '+me.d+'무 '+me.l+'패 · 득실 '+(gd>0?'+':'')+gd+' · FP '+(me.p?me.fp:0)+'</div>'+
       '<div class="mlist">'+ms.map(function(m){return matchCard(m);}).join('')+'</div></div>';}).join('')+
     (more>0?'<p class="small muted">일치하는 팀이 '+more+'개 더 있어요. 이름을 더 입력해 주세요.</p>':'');}
 
