@@ -131,7 +131,7 @@ function matchCard(m,opt){opt=opt||{};
   var click=ui.admin;
   var stTxt=st==='done'?'종료':st==='live'?'<span class="livedot"></span>경기 중':'예정';
   function row(s,score,win){return '<div class="m-row'+(win?' win':'')+'"><span class="m-team'+(s.ok?'':' ph')+'">'+esc(s.name)+(isMine(m.div,s.key)?'<span class="me">★</span>':'')+'</span><span class="m-score">'+(sc?score:'')+'</span></div>';}
-  var draw=r&&r.h===r.a&&m.stage==='rank'&&r.w?'<div class="m-tag">무승부 · 운영본부 판정</div>':'';
+  var draw='';if(r&&r.h===r.a&&m.stage==='rank')draw=r.ph!=null&&r.pa!=null&&r.ph!==r.pa?'<div class="m-tag pk">승부차기 '+r.ph+' : '+r.pa+'</div>':r.w?'<div class="m-tag">무승부 · 승부차기 승</div>':'<div class="m-tag" style="color:var(--live)">무승부 · 승부차기 결과 입력 대기</div>';
   if(ui.admin&&sc&&(sc.hy||sc.hr||sc.ay||sc.ar))draw+='<div class="m-cards">경고 '+(sc.hy||0)+'·'+(sc.ay||0)+' · 퇴장 '+(sc.hr||0)+'·'+(sc.ar||0)+'</div>';
   return '<'+(click?'button type="button"':'div')+' class="match s-'+st+(mine?' mine':'')+(click?' click':'')+'" data-mid="'+m.id+'">'+
     '<div class="m-meta"><span class="m-time">'+(opt.noTime?fieldName(m.f).replace('구장',''):m.t)+'</span><span class="m-field">'+(opt.noTime?'구장':fieldName(m.f))+'</span></div>'+
@@ -201,11 +201,11 @@ function teamsHTML(){var h='<section><h2>참가팀 · 조 편성 <span class="su
   return h+'</section>';}
 function rule(title,body,open){return '<details class="rule"'+(open?' open':'')+'><summary>'+title+'</summary><div class="rb">'+body+'</div></details>';}
 function rulesHTML(){return '<section><h2>대회 규정</h2>'+
-  '<div class="quick"><div><b>5 vs 5</b><span>경기 인원</span></div><div><b>15분</b><span>단판 · 연장/승부차기 없음</span></div><div><b>3·1·0</b><span>승 · 무 · 패</span></div></div>'+
-  rule('경기 방식 · 규칙','<ul><li>풋살 정식 규칙 + 과천아리컵 특별 규정</li><li>공인구: 스포츠트라이브 ST 풋살공 4호</li><li>백패스 가능</li><li>팀 파울 3개 초과 시 세컨 페널티</li><li>모든 경기 단판 15분, 연장전·승부차기 없음</li></ul>',true)+
+  '<div class="quick"><div><b>5 vs 5</b><span>경기 인원</span></div><div><b>15분</b><span>단판 · 연장 없음</span></div><div><b>3·1·0</b><span>승 · 무 · 패</span></div></div>'+
+  rule('경기 방식 · 규칙','<ul><li>풋살 정식 규칙 + 과천아리컵 특별 규정</li><li>공인구: 스포츠트라이브 ST 풋살공 4호</li><li>백패스 가능</li><li>팀 파울 3개 초과 시 세컨 페널티</li><li>모든 경기 단판 15분, 연장전 없음</li><li>토리부 순위 결정전에서 비기면 승부차기로 승리 팀 결정</li></ul>',true)+
   rule('순위 결정 · 페어플레이','<ul><li>승 3점 / 무 1점 / 패 0점</li><li>순위: 승점 → 승자승 → 페어플레이 → 골득실 → 추첨</li><li>페어플레이 점수: 경기마다 10점, 경고 −5점, 퇴장 −10점</li><li>본선 조 편성이 끝나면 예선 점수는 0점으로 초기화하고 본선 점수를 새로 계산</li><li class="warn">개회식 불참 팀은 무승부 경기를 모두 0점 처리</li></ul>')+
   rule('아리부 진행 방식','<ul><li>5팀 4개조 예선 풀리그 (팀당 4경기)</li><li>토너먼트 없이 예선 순위별로 조 재편성 → 1위조 ~ 5위조 본선 풀리그 (팀당 3경기)</li><li>팀당 총 7경기</li><li>우승·준우승은 1위조 본선 리그에서 결정</li><li>예선: A·B조 1·2구장, C·D조 5·6구장 / 본선: 1위조 1·2구장, 2–5위조 5·6구장</li></ul>')+
-  rule('토리부 진행 방식','<ul><li>6팀 2개조 예선 풀리그 (팀당 5경기, 1–4구장)</li><li>순위 결정전: A조 n위 vs B조 n위 (1위v1위 ~ 6위v6위, 총 6경기)</li><li>1위 결정전 승리 팀이 우승</li></ul>')+
+  rule('토리부 진행 방식','<ul><li>6팀 2개조 예선 풀리그 (팀당 5경기, 1–4구장)</li><li>순위 결정전: A조 n위 vs B조 n위 (1위v1위 ~ 6위v6위, 총 6경기)</li><li>순위 결정전 무승부 시 승부차기</li><li>1위 결정전 승리 팀이 우승</li></ul>')+
   rule('출전 · 복장 · 교체','<ul><li>경기 시작 <b>5분 전</b>까지 해당 구장 대기, 장비 체크. 킥오프 시각까지 미출전 시 실격</li><li>등록 10명 중 5명 출전. 참가신청서에 등록된 선수만 출전 가능</li><li>복장: 유니폼(없으면 같은 색 상의·하의) + 같은 색 축구 스타킹 + 정강이 보호대</li><li>유니폼 색이 비슷하면 비치된 조끼 착용</li><li>교체는 등록 선수 전원 가능, 교체 존에서 수시 교체</li><li>교체 선수가 라인 밖으로 완전히 나온 뒤 들어가기</li></ul>')+
   rule('징계','<ul><li>대회 중 경고 2회 또는 한 경기 경고 누적 퇴장: 다음 1경기 출전 정지</li><li>다이렉트 퇴장(레드카드): 이후 모든 경기 출전 불가</li><li>경고 누적은 리셋되지 않음</li><li>심각한 반칙·불법 행위 적발 시 팀 또는 선수 실격</li><li>다이렉트 퇴장 받은 지도자·선수는 시상 제외</li></ul>')+
   rule('검인 · 이의제기 · 안전','<ul><li>검인·등록 08:00–08:50 (축구장). 신분증 실물 지참: 주민등록증, 운전면허증, 여권, 모바일 신분증 (사진 불가)</li><li>이의제기: 물적 증거와 함께 구두 제기 후 서면 제출. 증거 없는 이의제기로 경기 중단 시 3분 후 불응하면 기권 처리</li><li>스포츠안전재단 보험 가입. 부상 시 대회본부는 응급치료만 지원</li><li>심장·호흡기 등 의료적 이상이 없는 선수만 출전</li></ul>')+
@@ -287,7 +287,7 @@ function preHTML(){var d=ui.div,h=divSeg()+liveStrip(M.filter(function(m){return
   return h;}
 function mainHTML(){var d=ui.div,h=divSeg()+liveStrip(M.filter(function(m){return m.div===d&&m.stage!=='pre';}));
   if(d==='tori'){
-    h+='<div class="card small" style="margin-bottom:12px">13:55부터 1–4구장 · A조 n위 vs B조 n위 · 단판 15분, 연장·승부차기 없음</div>';
+    h+='<div class="card small" style="margin-bottom:12px">13:55부터 1–4구장 · A조 n위 vs B조 n위 · 단판 15분 · 무승부 시 승부차기</div>';
     var ms=M.filter(function(m){return m.div==='tori'&&m.stage==='rank';});
     h+='<h2>순위 결정전</h2>'+timeList(ms);
     h+='<h2 style="margin-top:18px">토리부 최종 순위</h2><div class="rank-list">';
@@ -296,7 +296,7 @@ function mainHTML(){var d=ui.div,h=divSeg()+liveStrip(M.filter(function(m){retur
       if(w){var W=w==='h'?hs:as,L=w==='h'?as:hs;
         h+='<div class="rrow'+(isMine('tori',W.key)?' mine':'')+'"><span class="p">'+(2*r-1)+'</span><span class="n">'+esc(W.name)+(r===1?'<span class="medal g">우승</span>':'')+'</span></div>';
         h+='<div class="rrow'+(isMine('tori',L.key)?' mine':'')+'"><span class="p">'+(2*r)+'</span><span class="n">'+esc(L.name)+(r===1?'<span class="medal s">준우승</span>':'')+'</span></div>';}
-      else h+='<div class="rrow"><span class="p">'+(2*r-1)+'–'+(2*r)+'</span><span class="n muted">'+esc(hs.name)+' / '+esc(as.name)+'</span><span class="pill">'+(x?'판정 대기':m.t+' '+m.f+'구장')+'</span></div>';}
+      else h+='<div class="rrow"><span class="p">'+(2*r-1)+'–'+(2*r)+'</span><span class="n muted">'+esc(hs.name)+' / '+esc(as.name)+'</span><span class="pill">'+(x?'승부차기 결과 대기':m.t+' '+m.f+'구장')+'</span></div>';}
     return h+'</div><p class="small muted">시상식 14:30 · 축구장</p>';}
   h+='<div class="card small" style="margin-bottom:12px">예선 순위별로 조를 재편성해 본선 풀리그(팀당 3경기)를 치러요. <b>본선 점수는 0점에서 다시 시작</b>하고, 우승·준우승은 <b>1위조</b>에서 결정돼요.</div>';
   h+=seg('sub',[['group','조별 순위'],['time','시간표']],ui.sub);
@@ -371,7 +371,7 @@ var toastT;function toast(msg){var t=document.getElementById('toast');if(!t)retu
 var draft=null;
 function openSheet(id){var m=BYID[id];if(!m)return;var r=STATE.results[id]||{};
   var cur=mstate(m);
-  draft={id:id,h:r.h!=null?r.h:0,a:r.a!=null?r.a:0,hy:r.hy||0,hr:r.hr||0,ay:r.ay||0,ar:r.ar||0,w:r.w||'',cur:cur,st:cur==='sched'?'live':'done'};drawSheet();}
+  draft={id:id,h:r.h!=null?r.h:0,a:r.a!=null?r.a:0,hy:r.hy||0,hr:r.hr||0,ay:r.ay||0,ar:r.ar||0,ph:r.ph||0,pa:r.pa||0,w:r.w||'',cur:cur,st:cur==='sched'?'live':'done'};drawSheet();}
 function stepper(k,v,sm){return '<div class="step'+(sm?' sm':'')+'"><button type="button" data-st="'+k+'" data-d="-1" aria-label="빼기">−</button><output class="num">'+v+'</output><button type="button" data-st="'+k+'" data-d="1" aria-label="더하기">+</button></div>';}
 function drawSheet(){var el=document.getElementById('sheet');if(!draft){el.innerHTML='';return;}
   var m=BYID[draft.id],hs=side(m,'h'),as=side(m,'a');
@@ -381,7 +381,7 @@ function drawSheet(){var el=document.getElementById('sheet');if(!draft){el.inner
   if(draft.st==='sched')h+='<div class="sh-note">'+(draft.cur==='sched'?'아직 시작 전인 경기예요. 시작하면 <b>경기 중</b>을 눌러 표시해 주세요.':'저장하면 진행 표시와 입력된 점수가 지워지고 <b>예정</b>으로 돌아가요.')+'</div>';
   else if(draft.st==='live')h+='<div class="sh-note">참가자 화면에 <b style="color:var(--live)">● 경기 중</b>으로 표시돼요. 점수는 비워둬도 되고, 중간 스코어를 넣으면 함께 보여요. 순위에는 <b>종료</b>로 저장한 경기만 반영돼요.</div>'+team(hs,'h')+team(as,'a');
   else h+='<div class="sh-note">최종 스코어를 저장하면 순위표와 본선 대진에 바로 반영돼요.</div>'+team(hs,'h')+team(as,'a');
-  if(draft.st==='done'&&m.stage==='rank'&&draft.h===draft.a)h+='<div class="sh-team"><div class="nm">무승부 판정 (연장·승부차기 없음)</div><div class="radio"><label><input type="radio" name="w" value="h"'+(draft.w==='h'?' checked':'')+'>'+esc(hs.name)+' 상위</label><label><input type="radio" name="w" value="a"'+(draft.w==='a'?' checked':'')+'>'+esc(as.name)+' 상위</label></div><div class="small muted" style="margin-top:6px">운영본부 결정 후 선택. 비워두면 판정 대기로 표시돼요.</div></div>';
+  if(draft.st==='done'&&m.stage==='rank'&&draft.h===draft.a)h+='<div class="sh-team"><div class="nm">무승부 · 승부차기 스코어</div><div class="sh-grid"><span>'+esc(hs.name)+'</span>'+stepper('ph',draft.ph)+'<span>'+esc(as.name)+'</span>'+stepper('pa',draft.pa)+'</div><div class="small muted" style="margin-top:6px">'+(draft.ph!==draft.pa?'<b>'+esc(draft.ph>draft.pa?hs.name:as.name)+'</b> 승부차기 승으로 저장돼요.':'승부차기 점수가 같으면 결과 입력 대기로 저장돼요.')+'</div></div>';
   var lbl=draft.st==='sched'?(draft.cur==='sched'?'':'예정으로 되돌리기'):draft.st==='live'?(draft.cur==='live'?'중간 스코어 저장':'경기 중으로 표시'):'최종 결과 저장';
   h+='<div class="sh-actions"><button type="button" data-act="close">취소</button>'+(lbl?'<button type="button" class="pri" data-act="save">'+lbl+'</button>':'')+'</div></div></div>';
   el.innerHTML=h;}
@@ -481,7 +481,7 @@ document.addEventListener('click',function(e){var t=e.target.closest('button,[da
   if(t.dataset.draw){openDraw(t.dataset.draw);return;}
   if(t.dataset.mv){var q=t.dataset.mv.split(':'),run=drawDraft.runs[+q[0]],i1=+q[1],j1=i1+(+q[2]);var tmp=run.keys[i1];run.keys[i1]=run.keys[j1];run.keys[j1]=tmp;drawDrawSheet();return;}
   if(t.dataset.dst){draft.st=t.dataset.dst;drawSheet();return;}
-  if(t.dataset.st){var k=t.dataset.st;draft[k]=Math.max(0,Math.min(k.length>1?5:30,draft[k]+(+t.dataset.d)));if(draft.h!==draft.a)draft.w='';drawSheet();return;}
+  if(t.dataset.st){var k=t.dataset.st;draft[k]=Math.max(0,Math.min(k==='ph'||k==='pa'?30:k.length>1?5:30,draft[k]+(+t.dataset.d)));if(draft.h!==draft.a)draft.w='';drawSheet();return;}
   if(t.dataset.act){var a=t.dataset.act;
     if(a==='close'){closeSheet();return;}
     if(a==='logout'){logout('');return;}
@@ -499,7 +499,7 @@ document.addEventListener('click',function(e){var t=e.target.closest('button,[da
       if(draft.st==='sched'){save({type:'result',id:draft.id,rec:null},where+'경기를 예정으로 되돌렸어요');return;}
       var w=document.querySelector('input[name="w"]:checked');var rec={h:draft.h,a:draft.a,hy:draft.hy,hr:draft.hr,ay:draft.ay,ar:draft.ar};
       if(draft.st==='live'){rec.st='live';save({type:'result',id:draft.id,rec:rec},where+'경기 중으로 표시했어요');return;}
-      if(m.stage==='rank'&&draft.h===draft.a&&w)rec.w=w.value;
+      if(m.stage==='rank'&&draft.h===draft.a&&draft.ph!==draft.pa){rec.ph=draft.ph;rec.pa=draft.pa;rec.w=draft.ph>draft.pa?'h':'a';}
       save({type:'result',id:draft.id,rec:rec},where+'최종 결과를 저장했어요');return;}}
   if(t.dataset.mid&&ui.admin){openSheet(t.dataset.mid);}
 });
