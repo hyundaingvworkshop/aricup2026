@@ -17,6 +17,7 @@ function commandsFor(op) {
       const r = op.rec, rec = { h: int(r.h), a: int(r.a), hy: int(r.hy), hr: int(r.hr), ay: int(r.ay), ar: int(r.ar) };
       if (r.st === 'live') rec.st = 'live';
       if (r.w === 'h' || r.w === 'a') rec.w = r.w;
+      if (r.ph != null && r.pa != null && rec.h === rec.a) { rec.ph = int(r.ph); rec.pa = int(r.pa); if (rec.ph !== rec.pa) rec.w = rec.ph > rec.pa ? 'h' : 'a'; }
       return [['HSET', P + 'results', op.id, JSON.stringify(rec)]];
     }
     case 'notice': {
